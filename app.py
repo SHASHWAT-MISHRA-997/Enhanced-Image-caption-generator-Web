@@ -2,7 +2,6 @@ import streamlit as st
 import torch
 from PIL import Image
 from transformers import pipeline
-from googletrans import Translator
 import tempfile
 import os
 from gtts import gTTS
@@ -21,6 +20,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 @st.cache_resource
 def load_pipelines():
     try:
+        # Image Captioning Pipeline
         caption_image = pipeline(
             "image-to-text",
             model="Salesforce/blip-image-captioning-large",
@@ -31,14 +31,28 @@ def load_pipelines():
         st.stop()
     
     try:
-        translator = Translator()
+        # Translation Pipeline
+        # Using Helsinki-NLP's models for translation
+        # Define a pipeline for each supported language
+        translation_pipelines = {}
+        translation_models = {
+            "Spanish": "Helsinki-NLP/opus-mt-en-es",
+            "French": "Helsinki-NLP/opus-mt-en-fr",
+            "German": "Helsinki-NLP/opus-mt-en-de",
+            "Chinese": "Helsinki-NLP/opus-mt-en-zh",
+            "Japanese": "Helsinki-NLP/opus-mt-en-ja",
+            "Hindi": "Helsinki-NLP/opus-mt-en-hi",
+            # Add more models as needed
+        }
+        for lang, model_name in translation_models.items():
+            translation_pipelines[lang] = pipeline("translation", model=model_name, device=0 if device == "cuda" else -1)
     except Exception as e:
-        st.error(f"Error initializing translator: {e}")
+        st.error(f"Error initializing translation pipelines: {e}")
         st.stop()
     
-    return caption_image, translator
+    return caption_image, translation_pipelines
 
-caption_image, translator = load_pipelines()
+caption_image, translation_pipelines = load_pipelines()
 
 # Supported languages for translation
 SUPPORTED_LANGUAGES = {
@@ -70,9 +84,16 @@ def truncate_text(text, max_length=200):
     return text[:max_length] + '...' if len(text) > max_length else text
 
 def translate_text(text, target_language):
+    if target_language == "English":
+        return text  # No translation needed
+
     try:
-        translated = translator.translate(text, dest=target_language)
-        return translated.text
+        translator = translation_pipelines.get(target_language)
+        if not translator:
+            st.error(f"Translation for {target_language} is not supported.")
+            return text
+        translated = translator(text, max_length=400)[0]['translation_text']
+        return translated
     except Exception as e:
         st.error(f"Translation error: {e}")
         return text  # Fallback to original text if translation fails
@@ -80,33 +101,29 @@ def translate_text(text, target_language):
 def caption_my_image(pil_image, language):
     try:
         # Generate the caption from the image
-        caption_result = caption_image(images=pil_image)
-        semantics = caption_result[0]['generated_text']  # Get the first caption
-        confidence = caption_result[0].get('score', 'N/A')  # Assuming 'score' key exists
+        caption_result = caption_image(images=pil_image)[0]  # Get a single caption
+        caption = caption_result['generated_text']
     except Exception as e:
-        st.error(f"Error generating caption: {e}")
-        return None, None, None
+        st.error(f"Error generating captions: {e}")
+        return None, None, None  # Return None for all outputs
     
     # Translate the caption if needed
-    if language != "English":
-        target_lang_code = SUPPORTED_LANGUAGES.get(language, "en")
-        translated_semantics = translate_text(semantics, target_lang_code)
-    else:
-        translated_semantics = semantics
+    translated_caption = translate_text(caption, language)
     
     # Optionally truncate the text
-    truncated_semantics = truncate_text(translated_semantics, max_length=200)
-    
-    # Generate the corresponding audio
-    audio_path = generate_audio(truncated_semantics, language=SUPPORTED_LANGUAGES.get(language, "en"))
-    
-    return semantics, translated_semantics, confidence, audio_path
+    truncated_caption = truncate_text(translated_caption, max_length=200)
+
+    # Generate audio for the translated caption
+    audio_lang_code = SUPPORTED_LANGUAGES.get(language, "en")
+    audio_path = generate_audio(truncated_caption, language=audio_lang_code)
+
+    return caption, truncated_caption, audio_path
 
 def download_caption(text):
     return text.encode('utf-8')
 
 # Custom CSS for background hover effect and button colors
-st.markdown("""
+st.markdown(""" 
     <style>
         body {
             background: linear-gradient(135deg, rgba(255,0,0,0.7), rgba(0,0,255,0.7));
@@ -150,7 +167,7 @@ st.markdown("""
 def main():
    
     # Add an image to the sidebar
-    st.sidebar.image("imagec.jpg",use_column_width=True)
+    st.sidebar.image("imagec.jpg", use_column_width=True)
     st.sidebar.title("🖼️ Enhanced Image Caption Generator App")
     
     # Creator link at the top of the sidebar
@@ -171,7 +188,7 @@ def main():
         - Download the caption as a text file.
         """
     )
-    st.sidebar.header("Instructions :")
+    st.sidebar.header("Instructions")
     st.sidebar.markdown(
         """
         **1. Upload an Image:**  
@@ -198,35 +215,27 @@ def main():
         - Japanese
         - Hindi
         """
-
-
-
-      )
+    )
 
     # Instructions for using the additional app version
-    st.header("Instructions for Another Version : ")
+    st.header("Instructions for Another Version")
     st.markdown(
         """
         If you wish to try another version of the app, you can access it by clicking the link above.  
         This alternative version may offer different functionalities and models for image captioning.
 
         **Steps to use:**
-        1. Click on **"First Version of the App"** link.
+        1. Click on **"First Version of this App"** link.
         2. Follow the on-screen instructions provided in that version.
         3. Upload your image and generate captions as needed.
         """
     )
-    
     
     # Additional link for another version of the app
     st.markdown(
         '<a href="https://huggingface.co/spaces/kingsm997/Image-Caption-Generator" class="creator-link"> First Version of this App</a>',
         unsafe_allow_html=True
     )
-    
-
-
-
 
     # Sidebar Inputs
     image_input = st.file_uploader("📸 Select Image", type=["png", "jpg", "jpeg"])
@@ -244,17 +253,17 @@ def main():
                 st.stop()
             
             with st.spinner("Generating caption..."):
-                semantics, translated_semantics, confidence, audio_path = caption_my_image(
+                caption, translated_caption, audio_path = caption_my_image(
                     pil_image, language_input
                 )
             
-            if semantics is not None:
+            if caption is not None:
                 # Display results
                 st.subheader("📝 Generated Caption")
-                st.write(semantics)
-                
+                st.write(caption)
+
                 st.subheader("🌐 Translated Caption")
-                st.write(translated_semantics)
+                st.write(translated_caption)
 
                 if audio_path and os.path.exists(audio_path):
                     st.subheader("🔊 Audio Caption")
@@ -264,16 +273,17 @@ def main():
                             audio_bytes = audio_file.read()
                             st.audio(audio_bytes, format="audio/mp3")
                     except Exception as e:
-                        st.error(f"Error playing audio: {e}")
-                    
-                    # Download Button for text caption
-                    st.subheader("💾 Download Caption")
-                    st.download_button(
-                        label="Download Caption as Text",
-                        data=download_caption(translated_semantics),
-                        file_name="caption.txt",
-                        mime="text/plain"
-                    )
-                    
+                        st.error(f"Error loading audio: {e}")
+
+                # Download button for text caption
+                st.download_button(
+                    label="📥 Download Caption",
+                    data=download_caption(translated_caption),
+                    file_name="caption.txt",
+                    mime="text/plain",
+                )
+        else:
+            st.warning("Please upload an image to generate a caption.")
+
 if __name__ == "__main__":
     main()
