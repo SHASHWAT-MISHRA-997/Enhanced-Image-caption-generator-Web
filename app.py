@@ -49,7 +49,6 @@ SUPPORTED_LANGUAGES = {
     "Chinese": "zh-CN",
     "Japanese": "ja",
     "Hindi": "hi",
-    "Punjabi": "pa",
     # Add more languages as needed
 }
 
