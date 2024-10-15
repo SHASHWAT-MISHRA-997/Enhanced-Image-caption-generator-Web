@@ -31,32 +31,20 @@ def load_pipelines():
         st.stop()
     
     try:
-        # Translation Pipeline
-        # Using Helsinki-NLP's models for translation
-        # Define a pipeline for each supported language
-        translation_pipelines = {}
-        translation_models = {
-            "Spanish": "Helsinki-NLP/opus-mt-en-es",
-            "French": "Helsinki-NLP/opus-mt-en-fr",
-            "German": "Helsinki-NLP/opus-mt-en-de",
-            "Chinese": "Helsinki-NLP/opus-mt-en-zh",
-            "Japanese": "Helsinki-NLP/opus-mt-en-ja",
-            "Hindi": "Helsinki-NLP/opus-mt-en-hi",
-            # Add more models as needed
-        }
-        for lang, model_name in translation_models.items():
-            translation_pipelines[lang] = pipeline(
-                "translation",
-                model=model_name,
-                device=0 if device == "cuda" else -1
-            )
+        # Translation Pipeline using a unified multilingual model
+        translation_pipeline = pipeline(
+            "translation",
+            model="facebook/m2m100_418M",
+            tokenizer="facebook/m2m100_418M",
+            device=0 if device == "cuda" else -1
+        )
     except Exception as e:
-        st.error(f"Error initializing translation pipelines: {e}")
+        st.error(f"Error initializing translation pipeline: {e}")
         st.stop()
     
-    return caption_image, translation_pipelines
+    return caption_image, translation_pipeline
 
-caption_image, translation_pipelines = load_pipelines()
+caption_image, translation_pipeline = load_pipelines()
 
 # Supported languages for translation
 SUPPORTED_LANGUAGES = {
@@ -64,7 +52,7 @@ SUPPORTED_LANGUAGES = {
     "Spanish": "es",
     "French": "fr",
     "German": "de",
-    "Chinese": "zh-CN",
+    "Chinese": "zh",
     "Japanese": "ja",
     "Hindi": "hi",
     # Add more languages as needed
@@ -92,11 +80,10 @@ def translate_text(text, target_language):
         return text  # No translation needed
 
     try:
-        translator = translation_pipelines.get(target_language)
-        if not translator:
-            st.error(f"Translation for {target_language} is not supported.")
-            return text
-        translated = translator(text, max_length=400)[0]['translation_text']
+        # Set the target language for m2m100
+        translation_pipeline.model.config.forced_bos_token_id = translation_pipeline.tokenizer.lang_code_to_id[target_language]
+        
+        translated = translation_pipeline(text, max_length=400)[0]['translation_text']
         return translated
     except Exception as e:
         st.error(f"Translation error: {e}")
@@ -112,7 +99,7 @@ def caption_my_image(pil_image, language):
         return None, None, None  # Return None for all outputs
     
     # Translate the caption if needed
-    translated_caption = translate_text(caption, language)
+    translated_caption = translate_text(caption, SUPPORTED_LANGUAGES.get(language, "en"))
     
     # Optionally truncate the text
     truncated_caption = truncate_text(translated_caption, max_length=200)
