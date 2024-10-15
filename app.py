@@ -171,7 +171,7 @@ def main():
         - Download the caption as a text file.
         """
     )
-    st.sidebar.header("Instructions")
+    st.sidebar.header("Instructions :")
     st.sidebar.markdown(
         """
         **1. Upload an Image:**  
@@ -204,7 +204,7 @@ def main():
       )
 
     # Instructions for using the additional app version
-    st.header("Instructions for Another Version")
+    st.header("Instructions for Another Version : ")
     st.markdown(
         """
         If you wish to try another version of the app, you can access it by clicking the link above.  
