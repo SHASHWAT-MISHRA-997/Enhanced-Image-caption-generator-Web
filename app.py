@@ -211,7 +211,7 @@ def main():
         This alternative version may offer different functionalities and models for image captioning.
 
         **Steps to use:**
-        1. Click on **"Another version of the App"** link.
+        1. Click on **"First version of the App"** link.
         2. Follow the on-screen instructions provided in that version.
         3. Upload your image and generate captions as needed.
         """
