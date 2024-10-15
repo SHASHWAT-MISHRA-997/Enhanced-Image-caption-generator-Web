@@ -80,10 +80,17 @@ def translate_text(text, target_language):
         return text  # No translation needed
 
     try:
-        # Set the target language for m2m100
-        translation_pipeline.model.config.forced_bos_token_id = translation_pipeline.tokenizer.lang_code_to_id[target_language]
-        
-        translated = translation_pipeline(text, max_length=400)[0]['translation_text']
+        tgt_lang_code = SUPPORTED_LANGUAGES.get(target_language, "en")
+        if tgt_lang_code == "en":
+            return text  # Fallback in case of incorrect mapping
+
+        # Perform translation with specified source and target languages
+        translated = translation_pipeline(
+            text, 
+            src_lang="en", 
+            tgt_lang=tgt_lang_code, 
+            max_length=400
+        )[0]['translation_text']
         return translated
     except Exception as e:
         st.error(f"Translation error: {e}")
@@ -99,7 +106,7 @@ def caption_my_image(pil_image, language):
         return None, None, None  # Return None for all outputs
     
     # Translate the caption if needed
-    translated_caption = translate_text(caption, SUPPORTED_LANGUAGES.get(language, "en"))
+    translated_caption = translate_text(caption, language)
     
     # Optionally truncate the text
     truncated_caption = truncate_text(translated_caption, max_length=200)
