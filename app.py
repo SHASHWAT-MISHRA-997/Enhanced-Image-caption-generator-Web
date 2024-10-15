@@ -45,7 +45,11 @@ def load_pipelines():
             # Add more models as needed
         }
         for lang, model_name in translation_models.items():
-            translation_pipelines[lang] = pipeline("translation", model=model_name, device=0 if device == "cuda" else -1)
+            translation_pipelines[lang] = pipeline(
+                "translation",
+                model=model_name,
+                device=0 if device == "cuda" else -1
+            )
     except Exception as e:
         st.error(f"Error initializing translation pipelines: {e}")
         st.stop()
@@ -188,7 +192,7 @@ def main():
         - Download the caption as a text file.
         """
     )
-    st.sidebar.header("Instructions : ")
+    st.sidebar.header("Instructions")
     st.sidebar.markdown(
         """
         **1. Upload an Image:**  
@@ -218,7 +222,7 @@ def main():
     )
 
     # Instructions for using the additional app version
-    st.header("Instructions for Another Version : ")
+    st.header("Instructions for Another Version")
     st.markdown(
         """
         If you wish to try another version of the app, you can access it by clicking the link above.  
