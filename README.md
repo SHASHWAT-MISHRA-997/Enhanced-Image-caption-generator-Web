@@ -86,5 +86,14 @@ Text-to-Speech: Generated using gTTS (Google Text-to-Speech).
 # License :
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-# Contributing :
-Contributions are welcome! Please fork the repository and submit a pull request.
+
+# 🤝 Contributing :
+
+I welcome contributions! If you want to help improve this project, feel free to submit a pull request or open an issue.
+
+
+# ✨ Credits :
+
+Created by Shashwat Mishra
+
+
