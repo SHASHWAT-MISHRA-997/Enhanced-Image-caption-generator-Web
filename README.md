@@ -54,7 +54,7 @@ Setup Instructions
 
 # Clone the repository:
 
-git clone https://github.com/yourusername/enhanced-image-caption-generator.git
+git clone https://github.com/SHASHWAT-MISHRA-997/Enhanced-Image-caption-generator-Web.git
 cd enhanced-image-caption-generator-web
 
 # Install dependencies:
